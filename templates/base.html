@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nordic Sneakers{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .badge-missing { background-color: #fee2e2; color: #991b1b; }
+        .badge-in-stock { background-color: #d1fae5; color: #065f46; }
+        .badge-no-demand { background-color: #e5e7eb; color: #374151; }
+        .pagination-hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img src="/static/logo.png" alt="Nordic Sneakers" class="h-10">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500">WTB Markedsmonitor</span>
+                    <span id="live-indicator" class="flex items-center gap-1 text-xs text-green-600">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        Live
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Auto-refresh status every 5 seconds when scraping
+        let statusInterval = null;
+
+        function startStatusPolling() {
+            if (statusInterval) return;
+            statusInterval = setInterval(refreshStatus, 5000);
+        }
+
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Update WTB status
+                const wtbStatus = document.getElementById('wtb-status');
+                if (wtbStatus) {
+                    if (data.scrape_status.wtb.running) {
+                        wtbStatus.innerHTML = `<span class="loader"></span> ${data.scrape_status.wtb.progress}`;
+                    } else if (data.scrape_status.wtb.last_run) {
+                        wtbStatus.textContent = `Last: ${data.scrape_status.wtb.progress}`;
+                    }
+                }
+
+                // Update Store status
+                const storeStatus = document.getElementById('store-status');
+                if (storeStatus) {
+                    if (data.scrape_status.store.running) {
+                        storeStatus.innerHTML = `<span class="loader"></span> ${data.scrape_status.store.progress}`;
+                    } else if (data.scrape_status.store.last_run) {
+                        storeStatus.textContent = `Last: ${data.scrape_status.store.progress}`;
+                    }
+                }
+
+                // Update counts
+                document.getElementById('wtb-count').textContent = data.wtb_count;
+                document.getElementById('products-count').textContent = data.my_products_count;
+
+                // Stop polling if nothing is running
+                if (!data.scrape_status.wtb.running && !data.scrape_status.store.running) {
+                    stopStatusPolling();
+                }
+            } catch (e) {
+                console.error('Status refresh failed:', e);
+            }
+        }
+
+        async function startScrape(type) {
+            const btn = document.getElementById(`scrape-${type}-btn`);
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader"></span> Starting...';
+
+            try {
+                const response = await fetch(`/api/scrape/${type}`, { method: 'POST' });
+                if (response.ok) {
+                    startStatusPolling();
+                }
+            } catch (e) {
+                console.error('Scrape start failed:', e);
+            }
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = type === 'wtb' ? 'Scrape WTB' : 'Scrape Store';
+            }, 2000);
+        }
+
+        function filterResults(status) {
+            const rows = document.querySelectorAll('.result-row');
+            rows.forEach(row => {
+                if (status === 'all' || row.dataset.status === status) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            document.getElementById(`filter-${status}`).classList.remove('bg-gray-200', 'text-gray-700');
+            document.getElementById(`filter-${status}`).classList.add('bg-blue-600', 'text-white');
+        }
+
+        function searchResults() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const rows = document.querySelectorAll('.result-row');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Live update every 5 seconds - use lightweight summary endpoint
+        setInterval(() => {
+            refreshStatus();
+            refreshSummary();
+        }, 5000);
+
+        // Refresh only summary counts (lightweight)
+        async function refreshSummary() {
+            try {
+                const response = await fetch('/api/comparison/summary');
+                const data = await response.json();
+
+                // Update summary counts
+                const missingCount = document.querySelector('.bg-red-50 .text-2xl');
+                const inStockCount = document.querySelector('.bg-green-50 .text-2xl');
+                if (missingCount) missingCount.textContent = data.summary.missing_count;
+                if (inStockCount) inStockCount.textContent = data.summary.in_stock_count;
+
+                // Flash indicator to show update
+                const indicator = document.getElementById('live-indicator');
+                if (indicator) {
+                    indicator.classList.add('opacity-50');
+                    setTimeout(() => indicator.classList.remove('opacity-50'), 200);
+                }
+
+            } catch (e) {
+                console.error('Summary refresh failed:', e);
+            }
+        }
+
+        // Start live updates immediately
+        refreshStatus();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
