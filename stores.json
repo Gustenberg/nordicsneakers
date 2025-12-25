@@ -1,0 +1,38 @@
+{
+  "stores": [
+    {
+      "name": "Streetbill",
+      "url": "https://www.wtbmarketlist.eu/store/streetbill",
+      "enabled": true
+    },
+    {
+      "name": "Sneakerzone",
+      "url": "https://www.wtbmarketlist.eu/store/sneakerzone",
+      "enabled": true
+    },
+    {
+      "name": "Sneak",
+      "url": "https://www.wtbmarketlist.eu/store/sneak",
+      "enabled": true
+    },
+    {
+      "name": "Adonio",
+      "url": "https://www.wtbmarketlist.eu/store/adonio",
+      "enabled": true
+    }
+  ],
+  "schedule": {
+    "enabled": true,
+    "times": [
+      "08:00",
+      "20:00"
+    ]
+  },
+  "store_schedule": {
+    "enabled": true,
+    "times": [
+      "07:00",
+      "19:00"
+    ]
+  }
+}

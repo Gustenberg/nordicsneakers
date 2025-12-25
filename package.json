@@ -1,0 +1,24 @@
+{
+  "name": "wtb-monitor",
+  "version": "1.0.0",
+  "description": "WTB Market Monitor - Sneaker efterspørgsels sporingsværktøj",
+  "main": "scraper.js",
+  "scripts": {
+    "scrape": "node scraper.js",
+    "scrape:all": "node scraper.js --all",
+    "auth": "node scraper.js --auth",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "keywords": ["sneakers", "scraper", "wtb", "nordic-sneakers"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "playwright": "^1.56.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

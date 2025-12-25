@@ -1,0 +1,15 @@
+# Python virtual environment (recipient will create their own)
+venv/
+__pycache__/
+
+# Node modules (recipient will run npm install)
+node_modules/
+
+# Logs
+logs/
+
+# IDE/Editor
+.claude/
+
+# Windows artifacts
+nul
